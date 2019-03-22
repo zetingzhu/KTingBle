@@ -4,6 +4,8 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/KTingBle.iml" filepath="$PROJECT_DIR$/KTingBle.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/blelibrary/blelibrary.iml" filepath="$PROJECT_DIR$/blelibrary/blelibrary.iml" />
+      <module fileurl="file://$PROJECT_DIR$/dpilib/dpilib.iml" filepath="$PROJECT_DIR$/dpilib/dpilib.iml" />
     </modules>
   </component>
 </project>
