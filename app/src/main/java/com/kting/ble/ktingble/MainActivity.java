@@ -1,10 +1,12 @@
 package com.kting.ble.ktingble;
 
+import android.Manifest;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.le.ScanResult;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.support.constraint.ConstraintLayout;
@@ -16,6 +18,7 @@ import android.util.SparseArray;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.ble.blelibrary.blueutil.BleManager;
 import com.ble.blelibrary.callback.BleGattCallback;
@@ -28,9 +31,14 @@ import com.kting.ble.util.LogPlus;
 import com.kting.ble.util.MD5Util;
 import com.kting.ble.util.ScreenUtils;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.logging.Logger;
 
-public class MainActivity extends AppCompatActivity {
+import pub.devrel.easypermissions.AppSettingsDialog;
+import pub.devrel.easypermissions.EasyPermissions;
+
+public class MainActivity extends AppCompatActivity  implements EasyPermissions.PermissionCallbacks {
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
@@ -45,6 +53,14 @@ public class MainActivity extends AppCompatActivity {
     // 特征值
     public static String DEVICE_CHARACTERISTIC_UUID_BLUE = "00002aa4-0000-1000-8000-00805f9b34fb" ;
 
+
+    private String bleManufacturers = "" ;
+    private String remoter_id = "" ;
+
+    /**
+     * 随便赋值的一个唯一标识码
+     */
+    public static final int PERMISSIONS_ACCESS_LOCATION=1001;
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
@@ -62,6 +78,11 @@ public class MainActivity extends AppCompatActivity {
 
         BleManager.getInstance().init(getApplication());
 
+
+//        bleManufacturers = "415106a2a0a2" ;// 929650132125
+        bleManufacturers = "415106a276ea" ;// 9281771311057
+        remoter_id = "233061273" ;//
+
         initView();
 
     }
@@ -72,41 +93,53 @@ public class MainActivity extends AppCompatActivity {
         button2 = (Button) findViewById(R.id.button2);
         button3 = (Button) findViewById(R.id.button3);
         button4 = (Button) findViewById(R.id.button4);
+
+
+        // 扫码
         button1.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // 搜索
-                if (BleManager.getInstance().isBlueEnable()){
-                    long timeout = 10*1000 ;
-                    BleManager.getInstance().scan(new DeviceCallback() {
+                String[] perms = { Manifest.permission.ACCESS_FINE_LOCATION , Manifest.permission.ACCESS_COARSE_LOCATION };
+                if (EasyPermissions.hasPermissions( MainActivity.this , perms)) {
+                    // Already have permission, do the thing
+                    // 搜索
+                    if (BleManager.getInstance().isBlueEnable()){
+                        long timeout = 10*1000 ;
+                        BleManager.getInstance().scan(new DeviceCallback() {
 
-                        @Override
-                        public void onScanResult(ScanResult result) {
-                            String bleManufacturers = "4151069d979c" ;
-                            SparseArray<byte[]> dataArray = result.getScanRecord().getManufacturerSpecificData();
-                            Log.i(TAG, "onScanResult1:  " +bleManufacturers+" =" + MD5Util.bytesToHex(dataArray.valueAt(0)));
-                            // 需要连接设备的厂商信息
-                            String str = bleManufacturers.substring(4);
-                            if (str.equalsIgnoreCase(MD5Util.bytesToHex(dataArray.valueAt(0)))) {
-                                // 找到指定设备 , 停止扫描
-                                BleManager.getInstance().cancelScan();
-                                LogPlus.w("找到蓝牙设备，停止扫描");
-                                // 获取查找到的设备
-                                bleDevice = result.getDevice() ;
+                            @Override
+                            public void onScanResult(ScanResult result) {
+
+                                SparseArray<byte[]> dataArray = result.getScanRecord().getManufacturerSpecificData();
+                                Log.i(TAG, "onScanResult1:  " +bleManufacturers+" =" + MD5Util.bytesToHex(dataArray.valueAt(0)));
+                                // 需要连接设备的厂商信息
+                                String str = bleManufacturers.substring(4);
+                                if (str.equalsIgnoreCase(MD5Util.bytesToHex(dataArray.valueAt(0)))) {
+                                    // 找到指定设备 , 停止扫描
+                                    BleManager.getInstance().cancelScan();
+                                    LogPlus.w("找到蓝牙设备，停止扫描");
+                                    // 获取查找到的设备
+                                    bleDevice = result.getDevice() ;
+                                }
                             }
-                        }
 
-                        @Override
-                        public void onScanTimeOut() {
-                            LogPlus.w("蓝牙扫描时间超时");
-                        }
-                    } );
-                }else{
-                    LogPlus.w("蓝牙没有打开呀，请打开蓝牙");
-                    BleManager.getInstance().enableBluetooth();
+                            @Override
+                            public void onScanTimeOut() {
+                                LogPlus.w("蓝牙扫描时间超时");
+                            }
+                        } );
+                    }else{
+                        LogPlus.w("蓝牙没有打开呀，请打开蓝牙");
+                        BleManager.getInstance().enableBluetooth();
+                    }
+                } else {
+                    // Do not have permissions, request them now
+                    EasyPermissions.requestPermissions( MainActivity.this, "需要定位权限" , PERMISSIONS_ACCESS_LOCATION, perms);
                 }
+
             }
         });
+        // 连接
         button2.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -137,6 +170,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+        // 读取Rssi
         button3.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -155,6 +189,7 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
+        // 断开
         button4.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -174,6 +209,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // 读取特征值
         findViewById(R.id.button6).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -202,6 +238,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // 写入数据
         findViewById(R.id.button7).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -240,8 +277,8 @@ public class MainActivity extends AppCompatActivity {
      */
     public  byte[]  writeData(byte bt   ){
         //蓝牙连接 写入wmd5值 模拟遥控器id：588677840-写入的sn:32288
-        String bleManufacturers = "4151069d979c" ;
-            byte[] wmd5 =  writeData( bt , "588677840" , bleManufacturers ) ;
+
+            byte[] wmd5 =  writeData( bt , remoter_id , bleManufacturers ) ;
         // 蓝牙连接 写入wmd5值：c27e210000000000000000001416f77f69a2322b
             Log.e(TAG, "蓝牙连接 写入wmd5值：" + ByteUtil.bytesToHex2( wmd5 ) );
         return wmd5 ;
@@ -339,4 +376,48 @@ public class MainActivity extends AppCompatActivity {
         LogPlus.e("123", screenWidth + "======" + screenHeight);
     }
 
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        // Forward results to EasyPermissions
+        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
+    }
+
+
+    @Override
+    public void onPermissionsGranted(int requestCode, List<String> perms) {
+        // 此处表示权限申请已经成功，可以使用该权限完成app的相应的操作了
+        Log.e(TAG , "同意了 权限申请" );
+    }
+
+    @Override
+    public void onPermissionsDenied(int requestCode, List<String> perms) {
+        // 此处表示权限申请被用户拒绝了，此处可以通过弹框等方式展示申请该权限的原因，以使用户允许使用该权限
+
+        //(可选的)检查用户是否拒绝授权权限，并且点击了“不再询问”（测试如果不点击 不再询问也会调用这个方法，所以只要拒绝就会调用这个方法）
+        //下面的语句，展示一个对话框指导用户在应用设置里授权权限
+        Log.e(TAG , "拒绝了 权限申请" );
+        if (EasyPermissions.somePermissionPermanentlyDenied(this, perms)) {
+            new AppSettingsDialog.Builder(this)
+                    .setTitle("申请权限")
+                    .setRationale("应用需要这个权限")
+                    .build()
+                    .show();
+            Log.e(TAG , "引导设置 申请权限" );
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == AppSettingsDialog.DEFAULT_SETTINGS_REQ_CODE) {
+            // Do something after user returned from app settings screen, like showing a Toast.
+            // 当用户从应用设置界面返回的时候，可以做一些事情，比如弹出一个土司。
+            Toast.makeText(this, "权限设置界面返回" , Toast.LENGTH_SHORT).show();
+        }
+
+    }
 }

@@ -248,6 +248,8 @@ public class BleBluetooth {
     public synchronized void disconnect() {
         isActiveConnect = false;
         disconnectGatt();
+        refreshDeviceCache() ;
+        closeBluetoothGatt() ;
     }
 
     /**
